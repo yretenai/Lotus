@@ -4,8 +4,6 @@
 
 using System.Runtime.InteropServices;
 
-#pragma warning disable 8618
-
 namespace Lotus.Struct.Cache;
 
 [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 0x60)]
