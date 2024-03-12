@@ -7,6 +7,7 @@ using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using DragonLib;
 
 namespace Lotus.Struct;
 
@@ -25,19 +26,6 @@ public class CursoredMemoryMarshal {
 
     public int Left => Buffer.Length - Cursor;
 
-    private void Align(int n) {
-        if (Cursor < n) {
-            Cursor = n;
-            return;
-        }
-
-        if (Cursor % n == 0) {
-            return;
-        }
-
-        Cursor += n - Cursor % n;
-    }
-
     public T Read<T>(int alignment = 0) where T : struct {
         if (Left < Unsafe.SizeOf<T>()) {
             return default;
@@ -46,7 +34,7 @@ public class CursoredMemoryMarshal {
         var value = MemoryMarshal.Read<T>(Buffer[Cursor..].Span);
         Cursor += Unsafe.SizeOf<T>();
         if (alignment > 0) {
-            Align(alignment);
+            Cursor = Cursor.Align(alignment);
         }
 
         return value;
@@ -69,7 +57,7 @@ public class CursoredMemoryMarshal {
         var value = MemoryMarshal.Cast<byte, T>(Buffer[Cursor..(Cursor + size)].Span);
         Cursor += size;
         if (alignment > 0) {
-            Align(alignment);
+            Cursor = Cursor.Align(alignment);
         }
 
         return value;
