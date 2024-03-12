@@ -1,0 +1,4 @@
+[submodule "DragonLib"]
+	path = DragonLib
+	url = https://github.com/yretenai/DragonLib.git
+	ignore = dirty
