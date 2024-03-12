@@ -47,7 +47,7 @@ public class Packages : CacheFile {
         }
 
         NextConfig nextConfig;
-        var defer = default(Defer);
+        using var defer = new Deferrable();
         var comFlagsBuffer = new CursoredMemoryMarshal();
         if (Version >= 34) {
             comFlagsBuffer = buffer.Part(buffer.Read<int>());
@@ -61,10 +61,8 @@ public class Packages : CacheFile {
                 { (ZSTD_dParameter) 1000, 1 },
             });
             var decompressor = new Decompressor(decompressorOptions);
-            defer = () => {
-                decompressorOptions.Dispose();
-                decompressor.Dispose();
-            };
+            defer.Disposables.Add(decompressorOptions);
+            defer.Disposables.Add(decompressor);
 
             nextConfig = () => {
                 if (comFlagsBuffer.ReadBits(1) == 1) { // hasText
@@ -126,8 +124,6 @@ public class Packages : CacheFile {
                 Unknown3 = unknown3,
             };
         }
-
-        defer?.Invoke();
     }
 
     public int HeaderSize { get; }
@@ -143,6 +139,4 @@ public class Packages : CacheFile {
     public bool TryGetEntity(string path, [MaybeNullWhen(false)] out PackageEntity entity) => EntityRegistry.TryGetValue(path, out entity);
 
     private delegate string NextConfig();
-
-    private delegate void Defer();
 }
