@@ -9,8 +9,11 @@ namespace Lotus.Types.EE;
 
 public class Cache : CacheFile {
     public Cache(CursoredMemoryMarshal buffer, string filePath, string config) : base(buffer, filePath, config) {
-        var unknown1 = buffer.Read<int>();
-        Debug.Assert(unknown1 is 13, "unknown1 is 13");
+        Version = buffer.Read<int>();
+
+        if (Version < 13 && !Debugger.IsAttached) {
+            return;
+        }
 
         var count = buffer.Read<int>();
         Files.EnsureCapacity(count);
@@ -29,6 +32,7 @@ public class Cache : CacheFile {
         }
     }
 
+    public int Version { get; }
     public Dictionary<string, CacheManifestEntry> Files { get; } = [];
     public Dictionary<string, CacheManifestEntry> Packages { get; } = [];
 }

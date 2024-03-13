@@ -48,7 +48,7 @@ public sealed class CacheManager : IDisposable, IEnumerable<CacheManager.CacheMa
         var namePart = fullName.Split('_');
         var type = (ContentType) namePart[0][0];
         var name = namePart[0][2..];
-        var language = namePart.Length > 1 ? namePart[1] : "global";
+        var language = (namePart.Length > 1 ? namePart[1] : "global").ToLanguageCode();
         Log.Information("[{Category}] Loading Cache TOC {Name} (Type: {Type:G}, Locale: {Locale})", "Lotus/Cache", name, type, language);
         var table = Tables[fullName] = new ContentTable(File.OpenRead(path), File.OpenRead(Path.ChangeExtension(path, ".cache"))) {
             Locale = language,
@@ -61,11 +61,11 @@ public sealed class CacheManager : IDisposable, IEnumerable<CacheManager.CacheMa
         }
     }
 
-    public (Memory<byte> Data, TableEntry Entry) ReadHeader(string path, string locale = "global") {
+    public (Memory<byte> Data, TableEntry Entry) ReadHeader(string path, LanguageCode locale = LanguageCode.Global) {
         while (true) {
             var (data, entry) = ReadFile(new CacheManagerKey(ContentType.Header, locale, path));
-            if (data.IsEmpty && locale == "global") {
-                locale = "en";
+            if (data.IsEmpty && locale == LanguageCode.Global) {
+                locale = LanguageCode.English;
                 continue;
             }
 
@@ -73,7 +73,7 @@ public sealed class CacheManager : IDisposable, IEnumerable<CacheManager.CacheMa
         }
     }
 
-    public (Memory<byte> Data, TableEntry Entry, bool FullRes) ReadData(string path, string locale = "global") {
+    public (Memory<byte> Data, TableEntry Entry, bool FullRes) ReadData(string path, LanguageCode locale = LanguageCode.Global) {
         while (true) {
             var (data, entry) = ReadFile(new CacheManagerKey(ContentType.Full, locale, path));
             var full = !data.IsEmpty;
@@ -81,8 +81,8 @@ public sealed class CacheManager : IDisposable, IEnumerable<CacheManager.CacheMa
                 (data, entry) = ReadFile(new CacheManagerKey(ContentType.Base, locale, path));
             }
 
-            if (data.IsEmpty && locale == "global") {
-                locale = "en";
+            if (data.IsEmpty && locale == LanguageCode.Global) {
+                locale = LanguageCode.English;
                 continue;
             }
 
@@ -103,7 +103,7 @@ public sealed class CacheManager : IDisposable, IEnumerable<CacheManager.CacheMa
         return entry.IsDirectory ? (Memory<byte>.Empty, entry) : (entry.Read(table.Cache), entry);
     }
 
-    public record CacheManagerKey(ContentType Type, string Locale, string Path) {
+    public record CacheManagerKey(ContentType Type, LanguageCode Locale, string Path) {
         public override int GetHashCode() => HashCode.Combine(Type, Locale, Path.ToLowerInvariant());
     }
 
@@ -111,5 +111,5 @@ public sealed class CacheManager : IDisposable, IEnumerable<CacheManager.CacheMa
         public override int GetHashCode() => HashCode.Combine(Name.ToLowerInvariant(), Index);
     }
 
-    public record CacheManagerEntry(string Path, ContentType Type, string Locale, ReadOnlyMemory<byte> Data, TableEntry Entry);
+    public record CacheManagerEntry(string Path, ContentType Type, LanguageCode Locale, ReadOnlyMemory<byte> Data, TableEntry Entry);
 }

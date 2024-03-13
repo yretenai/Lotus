@@ -10,12 +10,16 @@ namespace Lotus.Types.EE;
 
 public class Dependencies : CacheFile {
     public Dependencies(CursoredMemoryMarshal buffer, string filePath, string config) : base(buffer, filePath, config) {
-        var unknown1 = buffer.Read<int>();
-        Debug.Assert(unknown1 is 20, "unknown1 is 20");
-        var unknown2 = buffer.Read<int>();
-        Debug.Assert(unknown2 is 82, "unknown2 is 82");
-        var unknown3 = buffer.Read<int>();
-        Debug.Assert(unknown3 is 1, "unknown3 is 1");
+        HeaderSize = buffer.Read<int>();
+        Version = buffer.Read<int>();
+        Flags = buffer.Read<uint>();
+
+        if (Version < 81 && !Debugger.IsAttached) {
+            return;
+        }
+
+        Debug.Assert(HeaderSize is 20, "HeaderSize is 20");
+        Debug.Assert(Flags is 1, "Flags is 1");
 
         var dependencyIds = MemoryMarshal.Cast<byte, DependencyRef>(buffer.Slice(buffer.Read<int>() << 2).Span);
 
@@ -34,6 +38,10 @@ public class Dependencies : CacheFile {
             Dependency.Add(entries);
         }
     }
+
+    public int HeaderSize { get; }
+    public int Version { get; }
+    public uint Flags { get; }
 
     public List<List<DependencyEntry>> Dependency { get; } = [];
 }

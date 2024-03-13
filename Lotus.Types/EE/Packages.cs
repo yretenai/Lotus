@@ -16,11 +16,16 @@ namespace Lotus.Types.EE;
 public class Packages : CacheFile {
     public Packages(CursoredMemoryMarshal buffer, string filePath, string config) : base(buffer, filePath, config) {
         HeaderSize = buffer.Read<int>();
-        Debug.Assert(HeaderSize is 20, "HeaderSize is 20");
         Version = buffer.Read<int>();
-        Debug.Assert(Version is >= 31 and <= 40, "Version is >= 31 and <= 40");
-        Flags = buffer.Read<int>();
+        Flags = buffer.Read<uint>();
+
+        if (Version < 31 && !Debugger.IsAttached) {
+            return;
+        }
+
+        Debug.Assert(HeaderSize is 20, "HeaderSize is 20");
         Debug.Assert(Flags is 1, "Flags is 1");
+
         if (Version >= 40) {
             Hash = buffer.Read<uint>();
         }
@@ -70,8 +75,9 @@ public class Packages : CacheFile {
                         var frame = new CursoredMemoryMarshal(frameData);
                         var dsize = (int) frame.ReadULEB(32);
                         var buf = ArrayPool<byte>.Shared.Rent(dsize);
-                        decompressor.Unwrap(frame.Slice().ToArray(), buf.AsSpan(0, dsize), false);
-                        var str = Encoding.ASCII.GetString(buf, 0, dsize);
+                        var bufSpan = buf.AsSpan(0, dsize);
+                        decompressor.Unwrap(frame.Slice().ToArray(), bufSpan, false);
+                        var str = Encoding.ASCII.GetString(bufSpan);
                         ArrayPool<byte>.Shared.Return(buf);
                         return str;
                     }
@@ -115,7 +121,7 @@ public class Packages : CacheFile {
                 parentType = packageName[..(packageName.LastIndexOf('/') + 1)] + parentType;
             }
 
-            EntityRegistry[$"{packageName}{fileName}"] = new PackageEntity(packageName, fileName, parentType, text) {
+            EntityRegistry[$"{packageName}{fileName}"] = new PackageEntry(packageName, fileName, parentType, text) {
                 Unknown1 = unknown1,
                 Unknown2 = unknown2,
                 Unknown3 = unknown3,
@@ -125,15 +131,15 @@ public class Packages : CacheFile {
 
     public int HeaderSize { get; }
     public int Version { get; }
-    public int Flags { get; }
+    public uint Flags { get; }
     public uint Hash { get; }
     public List<PackageRef> Types { get; } = [];
     public List<PackageRef> PackageRegistry { get; } = [];
-    public Dictionary<string, PackageEntity> EntityRegistry { get; } = [];
+    public Dictionary<string, PackageEntry> EntityRegistry { get; } = [];
 
     public string? this[string path] => TryGetEntity(path, out var entity) ? entity.Content : null;
 
-    public bool TryGetEntity(string path, [MaybeNullWhen(false)] out PackageEntity entity) => EntityRegistry.TryGetValue(path, out entity);
+    public bool TryGetEntity(string path, [MaybeNullWhen(false)] out PackageEntry entry) => EntityRegistry.TryGetValue(path, out entry);
 
     private delegate string NextConfig();
 }

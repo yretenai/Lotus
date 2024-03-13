@@ -18,6 +18,7 @@ public static class Program {
 
         args[1].EnsureDirectoryExists();
         Log.Logger = new LoggerConfiguration()
+                    .MinimumLevel.Debug()
                     .WriteTo.Console(LogEventLevel.Information)
                     .WriteTo.File(Path.Combine(args[1], "ExtractCache.log"), LogEventLevel.Debug)
                     .CreateLogger();
@@ -32,24 +33,21 @@ public static class Program {
             }
 
             Log.Information("{Path}", sourcePath);
-            var path = Path.Combine(args[1], type.ToString("G"), language, sourcePath[1..]);
+            var path = Path.Combine(args[1], type.ToString("G"), language.ToString("G"), sourcePath[1..]);
             if (data.Length == 0) {
                 continue;
-            }
-
-            var dir = Path.GetDirectoryName(path) ?? args[1];
-            if (!Directory.Exists(dir)) {
-                Directory.CreateDirectory(dir);
             }
 
             if (!Path.HasExtension(path)) {
                 path += ".bin";
             }
 
+            path.EnsureDirectoryExists();
+
             var fi = new FileInfo(path);
-            using (var @out = fi.Create()) {
-                @out.Write(data.Span);
-                @out.Flush();
+            using (var output = fi.Create()) {
+                output.Write(data.Span);
+                output.Flush();
             }
 
             fi.CreationTimeUtc = fi.LastWriteTimeUtc = DateTime.FromFileTimeUtc(entry.Time);

@@ -9,12 +9,6 @@ namespace Lotus.Types;
 public sealed class Deferrable : IDisposable, IAsyncDisposable {
     public List<IDisposable> Disposables { get; set; } = [];
 
-    public void Dispose() {
-        foreach (var disposable in Disposables) {
-            disposable.Dispose();
-        }
-    }
-
     public async ValueTask DisposeAsync() {
         foreach (var disposable in Disposables) {
             if (disposable is IAsyncDisposable disposableAsyncDisposable) {
@@ -22,6 +16,12 @@ public sealed class Deferrable : IDisposable, IAsyncDisposable {
             } else {
                 disposable.Dispose();
             }
+        }
+    }
+
+    public void Dispose() {
+        foreach (var disposable in Disposables) {
+            disposable.Dispose();
         }
     }
 }

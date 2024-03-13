@@ -70,7 +70,7 @@ public sealed class ContentTable : IDisposable {
     public Stream Cache { get; }
     public ContentType Type { get; internal set; }
     public string? Name { get; internal set; }
-    public string? Locale { get; internal set; }
+    public LanguageCode Locale { get; internal set; }
 
     public IEnumerable<(string Path, TableEntry Entry)> ManagedFiles {
         get {

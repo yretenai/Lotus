@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Lotus.ContentCache;
+using Lotus.ContentCache.Types;
 using Lotus.Types.EE;
 using Serilog;
 
@@ -43,9 +44,9 @@ public sealed class TypeFactory {
     public Packages? Packages { get; internal set; }
     public List<Cache> Manifests { get; } = [];
     public Dependencies? Dependencies { get; internal set; }
-    public Languages? Languages { get; internal set; }
+    public Dictionary<LanguageCode, Languages> Languages { get; } = [];
 
-    public CacheFile? CreateTypeInstance(string path, string? typeHint = null, string locale = "global") {
+    public CacheFile? CreateTypeInstance(string path, string? typeHint = null, LanguageCode locale = LanguageCode.Global) {
         if (Packages == null && string.IsNullOrEmpty(typeHint)) {
             throw new InvalidOperationException($"Call TypeFactory.Instance.{nameof(LoadPackages)}");
         }
@@ -59,9 +60,11 @@ public sealed class TypeFactory {
             typeList.Add(typeHint);
         }
 
+        Log.Debug("[{Category}] Loading \"{Path}\" with Type {Type} on Locale {Locale}", "Lotus/TypeFactory", path, typeList[0], locale);
+
         var data = CacheManager.Instance.ReadHeader(path, locale).Data;
         if (data.IsEmpty) {
-            Log.Debug("[{Category}] {Path} does not exist", "Lotus/TypeFactory", path);
+            Log.Debug("[{Category}] {Path} ({Locale}) does not exist", "Lotus/TypeFactory", path, locale);
             return default;
         }
 
@@ -69,8 +72,8 @@ public sealed class TypeFactory {
         return CreateTypeInstance(cursor, path, typeList, config);
     }
 
-    public (HashSet<string> TypeList, string Config) BuildTypeConfig(string path) {
-        var set = new HashSet<string>();
+    public (List<string> TypeList, string Config) BuildTypeConfig(string path) {
+        var set = new List<string>();
         var config = string.Empty;
         if (Packages == null) {
             return (set, config);
@@ -81,8 +84,10 @@ public sealed class TypeFactory {
                 break;
             }
 
-            var newConfig = $"[{entity.FileName},{entity.PackageName}]\n{entity.Content}\n{config}";
-            config = newConfig;
+            if (entity.Content.Length > 0) {
+                config = $"[{entity.FileName},{entity.PackageName}]\n{entity.Content}\n" + config;
+            }
+
             set.Add(entity.ParentFile);
 
             if (entity.ParentFile.Length > 0) {
@@ -96,7 +101,7 @@ public sealed class TypeFactory {
         return (set, config);
     }
 
-    public CacheFile? CreateTypeInstance(CursoredMemoryMarshal data, string name, HashSet<string> typeNames, string config) {
+    public CacheFile? CreateTypeInstance(CursoredMemoryMarshal data, string name, List<string> typeNames, string config) {
         foreach (var typeName in typeNames) {
             if (!TypeCache.TryGetValue(typeName, out var type)) {
                 continue;
@@ -120,14 +125,14 @@ public sealed class TypeFactory {
         return default;
     }
 
-    public T? CreateTypeInstance<T>(string path, string? typeHint = null, string locale = "global") where T : CacheFile {
+    public T? CreateTypeInstance<T>(string path, string? typeHint = null, LanguageCode locale = LanguageCode.Global) where T : CacheFile {
         var instance = CreateTypeInstance(path, typeHint, locale);
         if (instance == null) {
             return default;
         }
 
         if (instance is not T t) {
-            Log.Debug("[{Category}] Tried to convert {TypeName} to incompatible type {Target} with file {Name}!", "Lotus/TypeFactory", instance.GetType().FullName, typeof(T).FullName, path);
+            Log.Debug("[{Category}] Tried to convert {TypeName} to incompatible type {Target} with file {Name} ({Locale})!", "Lotus/TypeFactory", instance.GetType().FullName, typeof(T).FullName, path, locale);
             return default;
         }
 
@@ -152,14 +157,17 @@ public sealed class TypeFactory {
     public void LoadCache() {
         var manifest = CreateTypeInstance<Cache>("/H.Cache.bin", "/EE/Types/Cache");
         if (manifest == null) {
+            Log.Warning("[{Category}] Failed to load primary cache manifest", "Lotus/Cache");
             return;
         }
+
         Manifests.Add(manifest);
 
         foreach (var package in manifest.Packages) {
             manifest = CreateTypeInstance<Cache>(package.Key, "/EE/Types/Cache");
             if (manifest == null) {
-                return;
+                Log.Warning("[{Category}] Failed to load cache manifest {Name}", "Lotus/Cache", package.Key.TrimStart('/'));
+                continue;
             }
 
             Manifests.Add(manifest);
@@ -168,13 +176,31 @@ public sealed class TypeFactory {
 
     public void LoadPackages() {
         Packages = CreateTypeInstance<Packages>("/Packages.bin", "/EE/Types/Packages");
+        if (Packages == null) {
+            Log.Warning("[{Category}] Failed to load packages", "Lotus/Packages");
+        }
     }
 
-    public void LoadLanguages(string locale = "en") {
-        Languages = CreateTypeInstance<Languages>("/Languages.bin", "/EE/Types/Languages", locale);
+    public void LoadLanguages() {
+        foreach (var locale in Enum.GetValues<LanguageCode>()) {
+            if (locale is LanguageCode.Global or LanguageCode.Unspecified) {
+                continue;
+            }
+
+            var languages = CreateTypeInstance<Languages>("/Languages.bin", "/EE/Types/Languages", locale);
+            if (languages == null) {
+                Log.Warning("[{Category}] Failed to load locale {Locale}", "Lotus/Languages", locale);
+                continue;
+            }
+
+            Languages[locale] = languages;
+        }
     }
 
     public void LoadDependencies() {
         Dependencies = CreateTypeInstance<Dependencies>("/Deps.bin", "/EE/Types/Dependencies");
+        if (Dependencies == null) {
+            Log.Warning("[{Category}] Failed to load dependencies", "Lotus/Dependencies");
+        }
     }
 }

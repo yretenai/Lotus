@@ -2,7 +2,7 @@
 
 namespace Lotus.Types.Structs.EE;
 
-public record PackageEntity(string PackageName, string FileName, string ParentFile, string Content) {
+public record PackageEntry(string PackageName, string FileName, string ParentFile, string Content) {
     public int Unknown1 { get; init; }
     public int Unknown2 { get; init; }
     public int Unknown3 { get; init; }

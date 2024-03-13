@@ -140,6 +140,5 @@ public class CursoredMemoryMarshal {
         return result;
     }
 
-    // TODO: Map SpanHelper methods to CursoredMemoryMarshal.
     public MemoryHandle Pin() => Buffer[Cursor..].Pin();
 }
