@@ -4,9 +4,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using Lotus.Struct.Cache;
+using Lotus.ContentCache.Types;
+using Serilog;
 
-namespace Lotus.Cache;
+namespace Lotus.ContentCache;
 
 public sealed class CacheManager : IDisposable, IEnumerable<CacheManager.CacheManagerEntry> {
     public static CacheManager Instance { get; } = new();
@@ -48,12 +49,12 @@ public sealed class CacheManager : IDisposable, IEnumerable<CacheManager.CacheMa
         var type = (ContentType) namePart[0][0];
         var name = namePart[0][2..];
         var language = namePart.Length > 1 ? namePart[1] : "global";
-        var table = new ContentTable(File.OpenRead(path), File.OpenRead(Path.ChangeExtension(path, ".cache"))) {
+        Log.Information("[{Category}] Loading Cache TOC {Name} (Type: {Type:G}, Locale: {Locale})", "Lotus/Cache", name, type, language);
+        var table = Tables[fullName] = new ContentTable(File.OpenRead(path), File.OpenRead(Path.ChangeExtension(path, ".cache"))) {
             Locale = language,
             Name = name,
             Type = type,
         };
-        Tables[fullName] = table;
 
         foreach (var (filePath, index) in table.Files) {
             Entries[new CacheManagerKey(type, language, filePath)] = new CacheManagerValue(fullName, index);

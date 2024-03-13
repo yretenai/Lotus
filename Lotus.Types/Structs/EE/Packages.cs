@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-namespace Lotus.Struct.Types.EE;
+namespace Lotus.Types.Structs.EE;
 
 public record PackageEntity(string PackageName, string FileName, string ParentFile, string Content) {
     public int Unknown1 { get; init; }

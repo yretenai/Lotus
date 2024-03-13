@@ -5,10 +5,9 @@ using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
 using DragonLib.IO;
-using Lotus.Struct;
-using Lotus.Struct.Cache;
+using Lotus.ContentCache.Types;
 
-namespace Lotus.Cache;
+namespace Lotus.ContentCache;
 
 public static class TableEntryExtensions {
     internal static Memory<byte> Read(this TableEntry entry, Stream cache) {

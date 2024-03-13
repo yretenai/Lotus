@@ -7,8 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Lotus.Cache\Lotus.Cache.csproj"/>
-        <ProjectReference Include="..\Lotus.Struct\Lotus.Struct.csproj"/>
+        <ProjectReference Include="..\Lotus.ContentCache\Lotus.ContentCache.csproj" />
         <ProjectReference Include="..\Lotus.Types\Lotus.Types.csproj"/>
     </ItemGroup>
 

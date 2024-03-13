@@ -2,18 +2,18 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
-using Lotus.Struct;
-using Lotus.Struct.Types.EE;
+using Lotus.ContentCache;
+using Lotus.Types.Structs.EE;
 
 namespace Lotus.Types.EE;
 
-public class CacheManifest : CacheFile {
-    public CacheManifest(CursoredMemoryMarshal buffer, string filePath, string config) : base(buffer, filePath, config) {
+public class Cache : CacheFile {
+    public Cache(CursoredMemoryMarshal buffer, string filePath, string config) : base(buffer, filePath, config) {
         var unknown1 = buffer.Read<int>();
         Debug.Assert(unknown1 is 13, "unknown1 is 13");
 
         var count = buffer.Read<int>();
-        Files = new Dictionary<string, CacheManifestEntry>(count);
+        Files.EnsureCapacity(count);
         for (var i = 0; i < count; ++i) {
             var key = buffer.ReadString();
             var value = buffer.Read<CacheManifestEntry>();
@@ -21,7 +21,7 @@ public class CacheManifest : CacheFile {
         }
 
         count = buffer.Read<int>();
-        Packages = new Dictionary<string, CacheManifestEntry>(count);
+        Packages.EnsureCapacity(count);
         for (var i = 0; i < count; ++i) {
             var key = buffer.ReadString();
             var value = buffer.Read<CacheManifestEntry>();
@@ -29,6 +29,6 @@ public class CacheManifest : CacheFile {
         }
     }
 
-    public Dictionary<string, CacheManifestEntry> Files { get; }
-    public Dictionary<string, CacheManifestEntry> Packages { get; }
+    public Dictionary<string, CacheManifestEntry> Files { get; } = [];
+    public Dictionary<string, CacheManifestEntry> Packages { get; } = [];
 }

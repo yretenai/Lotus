@@ -6,8 +6,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using Lotus.Struct;
-using Lotus.Struct.Types.EE;
+using Lotus.ContentCache;
+using Lotus.Types.Structs.EE;
 using ZstdNet;
 
 namespace Lotus.Types.EE;
@@ -25,7 +25,6 @@ public class Packages : CacheFile {
             Hash = buffer.Read<uint>();
         }
 
-        Types = new List<PackageRef>();
         int count;
         if (Version >= 36) {
             count = buffer.Read<int>();
@@ -38,7 +37,6 @@ public class Packages : CacheFile {
         }
 
         count = buffer.Read<int>();
-        PackageRegistry = new List<PackageRef>();
         PackageRegistry.EnsureCapacity(count);
         for (var i = 0; i < count; ++i) {
             var str = buffer.ReadString();
@@ -100,7 +98,6 @@ public class Packages : CacheFile {
         }
 
         count = buffer.Read<int>();
-        EntityRegistry = new Dictionary<string, PackageEntity>();
         EntityRegistry.EnsureCapacity(count);
 
         for (var i = 0; i < count; ++i) {
@@ -130,9 +127,9 @@ public class Packages : CacheFile {
     public int Version { get; }
     public int Flags { get; }
     public uint Hash { get; }
-    public List<PackageRef> Types { get; }
-    public List<PackageRef> PackageRegistry { get; }
-    public Dictionary<string, PackageEntity> EntityRegistry { get; }
+    public List<PackageRef> Types { get; } = [];
+    public List<PackageRef> PackageRegistry { get; } = [];
+    public Dictionary<string, PackageEntity> EntityRegistry { get; } = [];
 
     public string? this[string path] => TryGetEntity(path, out var entity) ? entity.Content : null;
 

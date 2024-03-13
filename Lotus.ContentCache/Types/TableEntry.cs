@@ -2,7 +2,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace Lotus.Struct.Cache;
+namespace Lotus.ContentCache.Types;
 
 [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 0x60)]
 public record struct TableEntry {

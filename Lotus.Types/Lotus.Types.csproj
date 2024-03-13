@@ -8,10 +8,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Lotus.Cache\Lotus.Cache.csproj"/>
+        <ProjectReference Include="..\DragonLib\DragonLib\DragonLib.csproj" />
+        <ProjectReference Include="..\Lotus.ContentCache\Lotus.ContentCache.csproj" />
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Serilog" Version="3.1.1" />
         <PackageReference Include="ZstdNet" Version="1.4.5"/>
     </ItemGroup>
 

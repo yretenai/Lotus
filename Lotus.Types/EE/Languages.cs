@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System.IO;
-using Lotus.Struct;
+using Lotus.ContentCache;
 
 namespace Lotus.Types.EE;
 

@@ -2,11 +2,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Reflection;
-using Lotus.Cache;
-using Lotus.Struct;
+using Lotus.ContentCache;
 using Lotus.Types.EE;
+using Serilog;
 
 namespace Lotus.Types;
 
@@ -42,6 +41,8 @@ public sealed class TypeFactory {
     public static TypeFactory Instance { get; } = new();
     public Dictionary<string, Type> TypeCache { get; } = new();
     public Packages? Packages { get; internal set; }
+    public List<Cache> Manifests { get; } = [];
+    public Dependencies? Dependencies { get; internal set; }
     public Languages? Languages { get; internal set; }
 
     public CacheFile? CreateTypeInstance(string path, string? typeHint = null, string locale = "global") {
@@ -60,7 +61,7 @@ public sealed class TypeFactory {
 
         var data = CacheManager.Instance.ReadHeader(path, locale).Data;
         if (data.IsEmpty) {
-            Debug.WriteLine($"{path} does not exist", "Lotus/TypeFactory");
+            Log.Debug("[{Category}] {Path} does not exist", "Lotus/TypeFactory", path);
             return default;
         }
 
@@ -80,7 +81,7 @@ public sealed class TypeFactory {
                 break;
             }
 
-            var newConfig = $"[{entity.PackageName}{entity.FileName}]\n{entity.Content}\n{config}";
+            var newConfig = $"[{entity.FileName},{entity.PackageName}]\n{entity.Content}\n{config}";
             config = newConfig;
             set.Add(entity.ParentFile);
 
@@ -106,12 +107,12 @@ public sealed class TypeFactory {
                 var instance = Activator.CreateInstance(type, data, name, config) as CacheFile;
             #if DEBUG
                 if (data.Left > 0) {
-                    Debug.WriteLine($"Unconsumed data on type {typeName} with file {name}!");
+                    Log.Debug("[{Category}] Unconsumed data on type {TypeName} with file {Name}!", "Lotus/TypeFactory", typeName, name);
                 }
             #endif
                 return instance;
             } catch (Exception e) {
-                Debug.WriteLine($"Error while trying to initialize {typeName}\n{e}", "Lotus/TypeFactory");
+                Log.Error(e, "[{Category}] Error while trying to initialize {TypeName} with file {Name}!", "Lotus/TypeFactory", typeName, name);
                 return default;
             }
         }
@@ -126,7 +127,7 @@ public sealed class TypeFactory {
         }
 
         if (instance is not T t) {
-            Debug.WriteLine($"Tried to convert {instance.GetType().FullName} to incompatible type {typeof(T).FullName}", "Lotus/TypeFactory");
+            Log.Debug("[{Category}] Tried to convert {TypeName} to incompatible type {Target} with file {Name}!", "Lotus/TypeFactory", instance.GetType().FullName, typeof(T).FullName, path);
             return default;
         }
 
@@ -141,11 +142,28 @@ public sealed class TypeFactory {
         }
 
         if (instance is not T t) {
-            Debug.WriteLine($"Tried to convert {instance.GetType().FullName} to incompatible type {typeof(T).FullName}", "Lotus/TypeFactory");
+            Log.Debug("[{Category}] Tried to convert {TypeName} to incompatible type {Target} with file {Name}!", "Lotus/TypeFactory", instance.GetType().FullName, typeof(T).FullName, name);
             return default;
         }
 
         return t;
+    }
+
+    public void LoadCache() {
+        var manifest = CreateTypeInstance<Cache>("/H.Cache.bin", "/EE/Types/Cache");
+        if (manifest == null) {
+            return;
+        }
+        Manifests.Add(manifest);
+
+        foreach (var package in manifest.Packages) {
+            manifest = CreateTypeInstance<Cache>(package.Key, "/EE/Types/Cache");
+            if (manifest == null) {
+                return;
+            }
+
+            Manifests.Add(manifest);
+        }
     }
 
     public void LoadPackages() {
@@ -154,5 +172,9 @@ public sealed class TypeFactory {
 
     public void LoadLanguages(string locale = "en") {
         Languages = CreateTypeInstance<Languages>("/Languages.bin", "/EE/Types/Languages", locale);
+    }
+
+    public void LoadDependencies() {
+        Dependencies = CreateTypeInstance<Dependencies>("/Deps.bin", "/EE/Types/Dependencies");
     }
 }

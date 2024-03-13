@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
-namespace Lotus.Struct.Cache;
+namespace Lotus.ContentCache.Types;
 
 public enum ContentType : byte {
     Base = (byte) 'B',

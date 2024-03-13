@@ -2,7 +2,10 @@
 
 using System;
 using System.IO;
-using Lotus.Cache;
+using DragonLib;
+using Lotus.ContentCache;
+using Serilog;
+using Serilog.Events;
 
 namespace Lotus.ExtractCache;
 
@@ -13,8 +16,13 @@ public static class Program {
             return;
         }
 
+        args[1].EnsureDirectoryExists();
+        Log.Logger = new LoggerConfiguration()
+                    .WriteTo.Console(LogEventLevel.Information)
+                    .WriteTo.File(Path.Combine(args[1], "ExtractCache.log"), LogEventLevel.Debug)
+                    .CreateLogger();
+
         foreach (var toc in Directory.EnumerateFiles(Path.Combine(args[0], "Cache.Windows"), "*.toc", SearchOption.TopDirectoryOnly)) {
-            Console.WriteLine($"Loading {Path.GetFileNameWithoutExtension(toc)}");
             CacheManager.Instance.LoadTable(toc);
         }
 
@@ -23,7 +31,7 @@ public static class Program {
                 continue;
             }
 
-            Console.WriteLine(sourcePath);
+            Log.Information("{Path}", sourcePath);
             var path = Path.Combine(args[1], type.ToString("G"), language, sourcePath[1..]);
             if (data.Length == 0) {
                 continue;

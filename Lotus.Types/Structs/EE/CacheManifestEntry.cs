@@ -3,10 +3,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Lotus.Struct.Types.EE;
+namespace Lotus.Types.Structs.EE;
 
 [StructLayout(LayoutKind.Sequential, Pack = 4, Size = 0x14)]
-public record struct CacheManifestEntry {
-    public Guid Id { get; init; }
-    public uint Flags { get; init; }
-}
+public readonly record struct CacheManifestEntry(Guid Id, uint Flags);

@@ -4,9 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
-using Lotus.Struct.Cache;
+using Lotus.ContentCache.Types;
+using Serilog;
 
-namespace Lotus.Cache;
+namespace Lotus.ContentCache;
 
 public sealed class ContentTable : IDisposable {
     public unsafe ContentTable(Stream stream, Stream cache) {
@@ -52,10 +53,12 @@ public sealed class ContentTable : IDisposable {
                 var path = Paths[index];
                 if (Files.TryGetValue(path, out var oldEntry)) {
                     if (Entries[oldEntry].Time > entry.Time) {
+                        Log.Debug("[{Category}] Trying to overwrite cache entry?", "Lotus/Cache");
                         continue;
                     }
                 }
 
+                Log.Verbose("[{Category}] Found TOC Entry {Path}", "Lotus/Cache", path);
                 Files[path] = index;
             }
         }

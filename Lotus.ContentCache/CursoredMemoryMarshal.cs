@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using DragonLib;
 
-namespace Lotus.Struct;
+namespace Lotus.ContentCache;
 
 public class CursoredMemoryMarshal {
     public int Bits = -1;

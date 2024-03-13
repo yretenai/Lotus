@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System.Collections.Generic;
-using Lotus.Struct;
+using Lotus.ContentCache;
 using Lotus.Types.Config;
 
 namespace Lotus.Types;
@@ -17,11 +17,11 @@ public class DependentCacheFile : CacheFile {
         var fileConfigLength = buffer.Read<int>();
         FileConfig = ConfigReader.ReadSections(buffer.ReadString(fileConfigLength), filePath, "");
         if (fileConfigLength > 0) {
-            FileConfigCount = buffer.Read<byte>();
+            FileConfigCount = (int) buffer.ReadULEB(32);
         }
     }
 
     public string[] Dependencies { get; }
     public Dictionary<string, ConfigSection> FileConfig { get; }
-    public byte FileConfigCount { get; }
+    public int FileConfigCount { get; }
 }

@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace Lotus.Struct;
+namespace Lotus.ContentCache;
 
 public static class Oodle {
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -113,39 +113,42 @@ public static class Oodle {
         return false;
     }
 
-    public static void LoadOodleDll(string? path = null) {
+    public static bool LoadOodleDll(string? path = null) {
         if (IsReady) {
-            return;
+            return true;
         }
 
         path ??= Environment.CurrentDirectory;
 
         if (Directory.Exists(path) && new FileInfo(path).Attributes.HasFlag(FileAttributes.Directory)) {
             if (!TryFindOodleDll(path, out var oodlePath)) {
-                return;
+                return false;
             }
 
             path = oodlePath;
         }
 
         if (string.IsNullOrEmpty(path) || !File.Exists(path)) {
-            return;
+            return false;
         }
 
         if (!NativeLibrary.TryLoad(path, out var handle)) {
-            return;
+            return false;
         }
 
         if (!NativeLibrary.TryGetExport(handle, nameof(OodleLZ_Decompress), out var address)) {
-            return;
+            return false;
         }
 
         DecompressDelegate = Marshal.GetDelegateForFunctionPointer<OodleLZ_Decompress>(address);
+        return true;
     }
 
     public static unsafe void Decompress(Memory<byte> input, Memory<byte> output) {
         if (!IsReady) {
-            LoadOodleDll();
+            if (!LoadOodleDll()) {
+                throw new DllNotFoundException("Can't find Oodle library");
+            }
         }
 
         if (!IsReady) {

@@ -2,7 +2,7 @@
 
 using System;
 using System.Collections.Generic;
-using Lotus.Struct;
+using Lotus.ContentCache;
 using Lotus.Types.Config;
 
 namespace Lotus.Types;

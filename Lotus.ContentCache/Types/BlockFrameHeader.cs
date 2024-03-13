@@ -2,7 +2,7 @@
 
 using DragonLib.IO;
 
-namespace Lotus.Struct.Cache;
+namespace Lotus.ContentCache.Types;
 
 public record struct BlockFrameHeader {
     [BitField(5)] public byte Unknown1 { get; set; }
