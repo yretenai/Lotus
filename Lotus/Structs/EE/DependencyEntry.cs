@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 
+using System;
 using System.Runtime.InteropServices;
 using Lotus.Infrastructure;
 
@@ -13,4 +14,4 @@ public readonly record struct DependencyRef(uint Value) {
     public DependencyEntry? Resolved => TypeFactory.Instance.Dependencies?.Dependency.SafelyGet(PackageId)?.SafelyGet(EntryId);
 }
 
-public record DependencyEntry(string Path, DependencyRef[] Dependencies);
+public record DependencyEntry(string Path, Memory<DependencyRef> Dependencies);
