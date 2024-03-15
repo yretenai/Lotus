@@ -32,13 +32,13 @@ public enum ZSTDDictContentType {
 }
 
 public enum ZSTDForceIgnoreChecksum {
-    ZSTD_d_validateChecksum = 0,
-    ZSTD_d_ignoreChecksum = 1,
+    ValidateChecksum = 0,
+    IgnoreChecksum = 1,
 }
 
 public enum ZSTDRefMultipleDDicts {
-    ZSTD_rmd_refSingleDDict = 0,
-    ZSTD_rmd_refMultipleDDicts = 1,
+    SingleDDict = 0,
+    MultipleDDicts = 1,
 }
 
 public sealed partial class ZStandard : IDisposable {
