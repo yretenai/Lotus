@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using DragonLib;
 using Lotus.ContentCache;
 using Lotus.Types;
-using Lotus.Types.Structs.EE;
 using Serilog;
 using Serilog.Events;
 
@@ -39,13 +39,15 @@ public static class Program {
                 }
 
                 var currentPath = sourcePath;
-                var entity = default(PackageEntry);
-                while (TypeFactory.Instance.Packages!.TryGetEntity(currentPath, out var nextEntity)) {
-                    entity = nextEntity;
-                    currentPath = entity.ParentFile;
+                if (TypeFactory.Instance.Packages!.TryGetEntity(currentPath, out var entity)) {
+                    while (TypeFactory.Instance.Packages!.TryFindParentType(entity, out var nextEntity)) {
+                        entity = nextEntity;
+                    }
                 }
 
-                if (!string.IsNullOrEmpty(entity?.FileName) && !Path.HasExtension(sourcePath)) {
+                if (!Path.HasExtension(sourcePath)) {
+                    Debug.Assert(!string.IsNullOrEmpty(entity?.FileName), "!string.IsNullOrEmpty(entity?.FileName)");
+                    Debug.Assert(entity.ParentType.Length == 0, "entity.ParentType.Length == 0");
                     sourcePath += "." + entity.FileName.ToLowerInvariant();
                 }
 

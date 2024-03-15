@@ -116,16 +116,17 @@ public class Packages : CacheFile {
 
             var text = nextConfig();
 
-            if (parentType.Length > 0 && !parentType.Contains('/', StringComparison.Ordinal)) {
-                Debug.Assert(packageName[0] is '/');
-                parentType = packageName[..(packageName.LastIndexOf('/') + 1)] + parentType;
-            }
-
-            EntityRegistry[$"{packageName}{fileName}"] = new PackageEntry(packageName, fileName, parentType, text) {
+            var package = new PackageEntry(packageName, fileName, parentType, text) {
                 Unknown1 = unknown1,
                 Unknown2 = unknown2,
                 Unknown3 = unknown3,
             };
+            EntityRegistry[packageName + fileName] = package;
+
+            //   store in type lookup?  store globally?
+            if ((unknown1 & 1) == 0 && (unknown1 & 0x400) == 0x400) {
+                EntityRegistry[fileName] = package;
+            }
         }
     }
 
@@ -139,6 +140,44 @@ public class Packages : CacheFile {
     public string? this[string path] => TryGetEntity(path, out var entity) ? entity.Content : null;
 
     public bool TryGetEntity(string path, [MaybeNullWhen(false)] out PackageEntry entry) => EntityRegistry.TryGetValue(path, out entry);
+
+    public bool TryFindParentType(PackageEntry package, [MaybeNullWhen(false)] out PackageEntry entry) {
+        entry = null;
+        if (package.ParentType.Length == 0) {
+            return false;
+        }
+
+        if (TryGetEntity(package.ParentType, out entry)) {
+            return true;
+        }
+
+        var parentType = package.ParentType;
+        if (parentType.Length > 0 && !parentType.Contains('/', StringComparison.Ordinal)) {
+            parentType = package.PackageName[..(package.PackageName.LastIndexOf('/') + 1)] + parentType;
+        }
+
+        while (parentType.Length > 0) {
+            if (TryGetEntity(parentType, out entry)) {
+                return true;
+            }
+
+            var lastSlash = parentType.LastIndexOf('/');
+            if (lastSlash <= 0) {
+                break;
+            }
+
+            var penultimateSlash = parentType.LastIndexOf('/', lastSlash - 1);
+            if (penultimateSlash <= 0) {
+                break;
+            }
+
+            var name = parentType[lastSlash..];
+            var parentPath = parentType[..penultimateSlash];
+            parentType = parentPath + name;
+        }
+
+        return false;
+    }
 
     private delegate string NextConfig();
 }

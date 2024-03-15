@@ -80,23 +80,20 @@ public sealed class TypeFactory {
             return (set, config);
         }
 
-        while (true) {
-            if (!Packages.TryGetEntity(path, out var entity)) {
+        if (Packages.TryGetEntity(path, out var entity)) {
+            while (true) {
+                if (entity.Content.Length > 0) {
+                    config = $"[{entity.FileName},{entity.PackageName}]\n{entity.Content}\n" + config;
+                }
+
+                set.Add(entity.FullName);
+
+                if (Packages.TryFindParentType(entity, out entity)) {
+                    continue;
+                }
+
                 break;
             }
-
-            if (entity.Content.Length > 0) {
-                config = $"[{entity.FileName},{entity.PackageName}]\n{entity.Content}\n" + config;
-            }
-
-            set.Add(entity.ParentFile);
-
-            if (entity.ParentFile.Length > 0) {
-                path = entity.ParentFile;
-                continue;
-            }
-
-            break;
         }
 
         return (set, config);
