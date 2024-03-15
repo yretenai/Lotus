@@ -21,7 +21,7 @@ public static class Program {
         Log.Logger = new LoggerConfiguration()
                     .MinimumLevel.Debug()
                     .WriteTo.Console(LogEventLevel.Information)
-                    .WriteTo.File(Path.Combine(args[1], "ExtractCache.log"), LogEventLevel.Debug)
+                    .WriteTo.File(Path.Combine(args[1], "DumpPackages.log"), LogEventLevel.Debug)
                     .CreateLogger();
 
         foreach (var toc in Directory.EnumerateFiles(Path.Combine(args[0], "Cache.Windows"), "*.toc", SearchOption.TopDirectoryOnly)) {
