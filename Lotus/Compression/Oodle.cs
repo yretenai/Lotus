@@ -9,6 +9,38 @@ using Serilog;
 
 namespace Lotus.Compression;
 
+public enum OodleCompressor {
+    Invalid = -1,
+    LZH = 0,
+    LZHLW = 1,
+    LZNIB = 2,
+    None = 3,
+    LZB16 = 4,
+    LZBLW = 5,
+    LZA = 6,
+    LZNA = 7,
+    Kraken = 8,
+    Mermaid = 9,
+    BitKnit = 10,
+    Selkie = 11,
+    Hydra = 12,
+    Leviathan = 13,
+}
+
+public enum OodleThreadPhase {
+    ThreadPhase1 = 1,
+    ThreadPhase2 = 2,
+    ThreadPhaseAll = 3,
+    Unthreaded = ThreadPhaseAll,
+}
+
+public enum OodleVerbosity {
+    None = 0,
+    Minimal = 1,
+    Some = 2,
+    Lots = 3,
+}
+
 public static class Oodle {
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     public delegate bool Oodle_CheckVersion(uint oodleHeaderVersion, ref uint pOodleLibVersion);
@@ -32,45 +64,13 @@ public static class Oodle {
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.LPStr)]
-    public delegate string OodleLZ_Compressor_GetName(OodleLZ_Compressor compressor);
+    public delegate string OodleLZ_Compressor_GetName(OodleCompressor compressor);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public unsafe delegate int OodleLZ_Decompress(byte* srcBuf, int srcSize, byte* rawBuf, int rawSize, int fuzzSafe = 1, int checkCRC = 0, OodleLZ_Verbosity verbosity = OodleLZ_Verbosity.Minimal, byte* decBufBase = null, int decBufSize = 0, byte* fpCallback = null, void* callbackUserData = null, byte* decoderMemory = null, int decoderMemorySize = 0, OodleLZ_Decode_ThreadPhase threadPhase = OodleLZ_Decode_ThreadPhase.Unthreaded);
+    public unsafe delegate int OodleLZ_Decompress(byte* srcBuf, int srcSize, byte* rawBuf, int rawSize, int fuzzSafe = 1, int checkCRC = 0, OodleVerbosity verbosity = OodleVerbosity.Minimal, byte* decBufBase = null, int decBufSize = 0, byte* fpCallback = null, void* callbackUserData = null, byte* decoderMemory = null, int decoderMemorySize = 0, OodleThreadPhase threadPhase = OodleThreadPhase.Unthreaded);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    public unsafe delegate OodleLZ_Compressor OodleLZ_GetFirstChunkCompressor(byte* srcBuf, int srcSize, ref bool pIndependent);
-
-    public enum OodleLZ_Compressor {
-        Invalid = -1,
-        LZH = 0,
-        LZHLW = 1,
-        LZNIB = 2,
-        None = 3,
-        LZB16 = 4,
-        LZBLW = 5,
-        LZA = 6,
-        LZNA = 7,
-        Kraken = 8,
-        Mermaid = 9,
-        BitKnit = 10,
-        Selkie = 11,
-        Hydra = 12,
-        Leviathan = 13,
-    }
-
-    public enum OodleLZ_Decode_ThreadPhase {
-        ThreadPhase1 = 1,
-        ThreadPhase2 = 2,
-        ThreadPhaseAll = 3,
-        Unthreaded = ThreadPhaseAll,
-    }
-
-    public enum OodleLZ_Verbosity {
-        None = 0,
-        Minimal = 1,
-        Some = 2,
-        Lots = 3,
-    }
+    public unsafe delegate OodleCompressor OodleLZ_GetFirstChunkCompressor(byte* srcBuf, int srcSize, ref bool pIndependent);
 
     // this will return a platform-appropriate library name, wildcarded to suppress prefixes, suffixes and version masks
     // - oo2core_9_win32.dll
@@ -253,7 +253,7 @@ public static class Oodle {
         return DecompressDelegate((byte*) inPin.Pointer, input.Length, (byte*) outPin.Pointer, output.Length);
     }
 
-    public static unsafe OodleLZ_Compressor GetCompressor(Memory<byte> input) {
+    public static unsafe OodleCompressor GetCompressor(Memory<byte> input) {
         if (!IsReady) {
             if (!LoadOodleDll()) {
                 throw new DllNotFoundException("Can't find Oodle library");
@@ -261,7 +261,7 @@ public static class Oodle {
         }
 
         if (!IsReady || GetCompressorDelegate == null) {
-            return OodleLZ_Compressor.Invalid;
+            return OodleCompressor.Invalid;
         }
 
         using var inPin = input.Pin();
@@ -274,7 +274,7 @@ public static class Oodle {
         return GetCompressorName(compressor);
     }
 
-    public static string GetCompressorName(OodleLZ_Compressor compressor) {
+    public static string GetCompressorName(OodleCompressor compressor) {
         if (!IsReady) {
             if (!LoadOodleDll()) {
                 throw new DllNotFoundException("Can't find Oodle library");
