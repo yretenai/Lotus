@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -9,7 +10,19 @@ using Serilog;
 
 namespace Lotus.ContentCache;
 
-public sealed class CacheManager : IDisposable, IEnumerable<CacheManager.CacheManagerEntry> {
+public sealed record CacheManagerKey(ContentType Type, LanguageCode Locale, string Path) {
+    public override int GetHashCode() => HashCode.Combine(Type, Locale, Path.ToLowerInvariant());
+}
+
+public sealed record CacheManagerEntry(string Path, ContentType Type, LanguageCode Locale, IMemoryOwner<byte>? Data, TableEntry Entry) : IDisposable {
+    public static CacheManagerEntry Default { get; } = new(string.Empty, ContentType.Header, LanguageCode.Global, null, default);
+
+    public void Dispose() {
+        Data?.Dispose();
+    }
+}
+
+public sealed class CacheManager : IDisposable, IEnumerable<CacheManagerEntry> {
     public static CacheManager Instance { get; } = new();
 
     public IEnumerable<string> Names {
@@ -36,8 +49,7 @@ public sealed class CacheManager : IDisposable, IEnumerable<CacheManager.CacheMa
 
     public IEnumerator<CacheManagerEntry> GetEnumerator() {
         foreach (var ((contentType, locale, path), value) in Entries) {
-            var (data, entry) = ReadFile(value);
-            yield return new CacheManagerEntry(path, contentType, locale, data, entry);
+            yield return ReadFile(value, contentType, locale, path);
         }
     }
 
@@ -61,55 +73,49 @@ public sealed class CacheManager : IDisposable, IEnumerable<CacheManager.CacheMa
         }
     }
 
-    public (Memory<byte> Data, TableEntry Entry) ReadHeader(string path, LanguageCode locale = LanguageCode.Global) {
+    public CacheManagerEntry ReadHeader(string path, LanguageCode locale = LanguageCode.Global) {
         while (true) {
-            var (data, entry) = ReadFile(new CacheManagerKey(ContentType.Header, locale, path));
-            if (data.IsEmpty && locale == LanguageCode.Global) {
+            var record = ReadFile(new CacheManagerKey(ContentType.Header, locale, path));
+
+            if (record.Data == null && locale == LanguageCode.Global) {
                 locale = LanguageCode.English;
                 continue;
             }
 
-            return (data, entry);
+            return record;
         }
     }
 
-    public (Memory<byte> Data, TableEntry Entry, bool FullRes) ReadData(string path, LanguageCode locale = LanguageCode.Global) {
+    public CacheManagerEntry ReadData(string path, LanguageCode locale = LanguageCode.Global) {
         while (true) {
-            var (data, entry) = ReadFile(new CacheManagerKey(ContentType.Full, locale, path));
-            var full = !data.IsEmpty;
-            if (data.IsEmpty) {
-                (data, entry) = ReadFile(new CacheManagerKey(ContentType.Base, locale, path));
+            var record = ReadFile(new CacheManagerKey(ContentType.Full, locale, path));
+            if (record.Data == null) {
+                record = ReadFile(new CacheManagerKey(ContentType.Base, locale, path));
             }
 
-            if (data.IsEmpty && locale == LanguageCode.Global) {
+            if (record.Data == null && locale == LanguageCode.Global) {
                 locale = LanguageCode.English;
                 continue;
             }
 
-            return (data, entry, full);
+            return record;
         }
     }
 
-    private (Memory<byte> Data, TableEntry Entry) ReadFile(CacheManagerKey key) => !Entries.TryGetValue(key, out var value) ? (Memory<byte>.Empty, default) : ReadFile(value);
+    private CacheManagerEntry ReadFile(CacheManagerKey key) => !Entries.TryGetValue(key, out var value) ? CacheManagerEntry.Default : ReadFile(value, key.Type, key.Locale, key.Path);
 
-    private (Memory<byte> Data, TableEntry Entry) ReadFile(CacheManagerValue value) {
+    private CacheManagerEntry ReadFile(CacheManagerValue value, ContentType type, LanguageCode locale, string path) {
         var (name, index) = value;
         if (!Tables.TryGetValue(name, out var table) || index >= table.Entries.Length) {
-            return (Memory<byte>.Empty, default);
+            return CacheManagerEntry.Default;
         }
 
         var entry = table.Entries[index];
 
-        return entry.IsDirectory ? (Memory<byte>.Empty, entry) : (entry.Read(table.Cache), entry);
+        return entry.IsDirectory ? CacheManagerEntry.Default : new CacheManagerEntry(path, type, locale, entry.Read(table.Cache), entry);
     }
 
-    public record CacheManagerKey(ContentType Type, LanguageCode Locale, string Path) {
-        public override int GetHashCode() => HashCode.Combine(Type, Locale, Path.ToLowerInvariant());
-    }
-
-    private record CacheManagerValue(string Name, int Index) {
+    private sealed record CacheManagerValue(string Name, int Index) {
         public override int GetHashCode() => HashCode.Combine(Name.ToLowerInvariant(), Index);
     }
-
-    public record CacheManagerEntry(string Path, ContentType Type, LanguageCode Locale, ReadOnlyMemory<byte> Data, TableEntry Entry);
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -13,9 +14,9 @@ public sealed class ContentTable : IDisposable {
     public unsafe ContentTable(Stream stream, Stream cache) {
         Cache = cache;
 
-        Span<byte> buffer = new byte[8];
-        stream.ReadExactly(buffer);
-        var header = MemoryMarshal.Cast<byte, uint>(buffer);
+        var headerBuffer = (stackalloc byte[8]);
+        stream.ReadExactly(headerBuffer);
+        var header = MemoryMarshal.Cast<byte, uint>(headerBuffer);
         if (header[0] != 0x1867C64E) {
             throw new InvalidDataException("Not a TOC file");
         }
@@ -24,13 +25,17 @@ public sealed class ContentTable : IDisposable {
             throw new NotSupportedException($"Version {header[1]} is not supported");
         }
 
-        buffer = new byte[stream.Length - stream.Position];
-        stream.ReadExactly(buffer);
-        Entries = new TableEntry[buffer.Length / 0x60];
-        fixed (byte* ptr = &buffer.GetPinnableReference()) {
-            for (var offset = 0; offset < buffer.Length; offset += 0x60) {
-                Entries[offset / 0x60] = Marshal.PtrToStructure<TableEntry>((nint) (ptr + offset));
-            }
+        var bufferSize = (int) (stream.Length - stream.Position);
+        using var buffer = MemoryPool<byte>.Shared.Rent(bufferSize);
+        if (buffer.Memory.Length < bufferSize) {
+            throw new OutOfMemoryException();
+        }
+
+        stream.ReadExactly(buffer.Memory.Span[..bufferSize]);
+        Entries = new TableEntry[bufferSize / 0x60];
+        using var bufferPin = buffer.Memory.Pin();
+        for (var offset = 0; offset < bufferSize; offset += 0x60) {
+            Entries[offset / 0x60] = Marshal.PtrToStructure<TableEntry>((IntPtr) bufferPin.Pointer + offset);
         }
 
         var directoryMap = new Dictionary<int, int>();

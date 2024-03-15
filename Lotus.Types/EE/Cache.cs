@@ -2,7 +2,7 @@
 
 using System.Collections.Generic;
 using System.Diagnostics;
-using Lotus.ContentCache;
+using Lotus.ContentCache.IO;
 using Lotus.Types.Structs.EE;
 
 namespace Lotus.Types.EE;

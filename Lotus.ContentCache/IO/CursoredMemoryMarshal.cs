@@ -7,22 +7,29 @@ using System.Runtime.InteropServices;
 using System.Text;
 using DragonLib;
 
-namespace Lotus.ContentCache;
+namespace Lotus.ContentCache.IO;
 
 public class CursoredMemoryMarshal {
-    public int Bits = -1;
-    public Memory<byte> Buffer;
-    public int Cursor;
-    public int Shift = int.MaxValue;
-
     public CursoredMemoryMarshal() { }
 
-    public CursoredMemoryMarshal(Memory<byte> buffer, int cursor = 0) {
-        Buffer = buffer;
+    public CursoredMemoryMarshal(Memory<byte> buffer, bool readOnly = false, int cursor = 0) {
+        SetBuffer(buffer);
+        ReadOnly = readOnly;
         Cursor = cursor;
     }
 
+    public int Bits { get; private set; } = -1;
+    public Memory<byte> Buffer { get; private set; }
+    public int Cursor { get; set; }
+    public int Shift { get; private set; } = int.MaxValue;
+
+    public bool ReadOnly { get; }
+
     public int Left => Buffer.Length - Cursor;
+
+    protected void SetBuffer(Memory<byte> buffer) {
+        Buffer = buffer;
+    }
 
     public T Read<T>(int alignment = 0) where T : struct {
         if (Left < Unsafe.SizeOf<T>()) {
@@ -70,7 +77,11 @@ public class CursoredMemoryMarshal {
         return array;
     }
 
-    public void EnsureSpace(int size) {
+    public virtual void EnsureSpace(int size) {
+        if (ReadOnly) {
+            return;
+        }
+
         if (Buffer.Length >= size) {
             return;
         }
@@ -81,12 +92,20 @@ public class CursoredMemoryMarshal {
     }
 
     public void Paste(Memory<byte> buffer) {
+        if (ReadOnly) {
+            return;
+        }
+
         EnsureSpace(Cursor + buffer.Length);
         buffer.CopyTo(Buffer[Cursor..]);
         Cursor += buffer.Length;
     }
 
     public void Paste(Span<byte> buffer) {
+        if (ReadOnly) {
+            return;
+        }
+
         EnsureSpace(Cursor + buffer.Length);
         buffer.CopyTo(Buffer[Cursor..].Span);
         Cursor += buffer.Length;

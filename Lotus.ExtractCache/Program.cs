@@ -4,6 +4,8 @@ using System;
 using System.IO;
 using DragonLib;
 using Lotus.ContentCache;
+using Lotus.Types;
+using Lotus.Types.Structs.EE;
 using Serilog;
 using Serilog.Events;
 
@@ -27,30 +29,44 @@ public static class Program {
             CacheManager.Instance.LoadTable(toc);
         }
 
-        foreach (var (sourcePath, type, language, data, entry) in CacheManager.Instance) {
-            if (entry.IsDirectory) {
-                continue;
+        TypeFactory.Instance.LoadPackages();
+
+        foreach (var instance in CacheManager.Instance) {
+            try {
+                var (sourcePath, type, language, data, entry) = instance;
+                if (entry.IsDirectory) {
+                    continue;
+                }
+
+                var currentPath = sourcePath;
+                var entity = default(PackageEntry);
+                while (TypeFactory.Instance.Packages!.TryGetEntity(currentPath, out var nextEntity)) {
+                    entity = nextEntity;
+                    currentPath = entity.ParentFile;
+                }
+
+                if (!string.IsNullOrEmpty(entity?.FileName) && !Path.HasExtension(sourcePath)) {
+                    sourcePath += "." + entity.FileName.ToLowerInvariant();
+                }
+
+                Log.Information("{Path}", sourcePath);
+                var path = Path.Combine(args[1], type.ToString("G"), language.ToString("G"), sourcePath[1..]);
+                if (data == null) {
+                    continue;
+                }
+
+                path.EnsureDirectoryExists();
+
+                var fi = new FileInfo(path);
+                using (var output = fi.Create()) {
+                    output.Write(data.Memory.Span[..entry.Size]);
+                    output.Flush();
+                }
+
+                fi.CreationTimeUtc = fi.LastWriteTimeUtc = DateTime.FromFileTimeUtc(entry.Time);
+            } finally {
+                instance.Dispose();
             }
-
-            Log.Information("{Path}", sourcePath);
-            var path = Path.Combine(args[1], type.ToString("G"), language.ToString("G"), sourcePath[1..]);
-            if (data.Length == 0) {
-                continue;
-            }
-
-            if (!Path.HasExtension(path)) {
-                path += ".bin";
-            }
-
-            path.EnsureDirectoryExists();
-
-            var fi = new FileInfo(path);
-            using (var output = fi.Create()) {
-                output.Write(data.Span);
-                output.Flush();
-            }
-
-            fi.CreationTimeUtc = fi.LastWriteTimeUtc = DateTime.FromFileTimeUtc(entry.Time);
         }
 
         CacheManager.Instance.Dispose();

@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Lotus.ContentCache;
+using Lotus.ContentCache.IO;
 using Lotus.ContentCache.Types;
 using Lotus.Types.EE;
 using Serilog;
@@ -62,13 +63,13 @@ public sealed class TypeFactory {
 
         Log.Debug("[{Category}] Loading \"{Path}\" with Type {Type} on Locale {Locale}", "Lotus/TypeFactory", path, typeList[0], locale);
 
-        var data = CacheManager.Instance.ReadHeader(path, locale).Data;
-        if (data.IsEmpty) {
+        using var record = CacheManager.Instance.ReadHeader(path, locale);
+        if (record.Data == null) {
             Log.Debug("[{Category}] {Path} ({Locale}) does not exist", "Lotus/TypeFactory", path, locale);
             return default;
         }
 
-        var cursor = new CursoredMemoryMarshal(data);
+        var cursor = new CursoredMemoryMarshal(record.Data.Memory[..record.Entry.Size]);
         return CreateTypeInstance(cursor, path, typeList, config);
     }
 

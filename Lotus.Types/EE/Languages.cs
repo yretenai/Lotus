@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using Lotus.ContentCache;
+using Lotus.ContentCache.IO;
 using Lotus.ContentCache.Types;
 using Lotus.Types.Structs.EE;
 using ZstdNet;

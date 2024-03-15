@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using Lotus.ContentCache;
+using Lotus.ContentCache.IO;
 using Lotus.Types.Structs.EE;
 using ZstdNet;
 
@@ -135,8 +135,7 @@ public class Packages : CacheFile {
     public uint Hash { get; }
     public List<PackageRef> Types { get; } = [];
     public List<PackageRef> PackageRegistry { get; } = [];
-    public Dictionary<string, PackageEntry> EntityRegistry { get; } = [];
-
+    public Dictionary<string, PackageEntry> EntityRegistry { get; } = new(StringComparer.OrdinalIgnoreCase);
     public string? this[string path] => TryGetEntity(path, out var entity) ? entity.Content : null;
 
     public bool TryGetEntity(string path, [MaybeNullWhen(false)] out PackageEntry entry) => EntityRegistry.TryGetValue(path, out entry);
