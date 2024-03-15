@@ -1,10 +1,6 @@
 
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lotus.ContentCache", "Lotus.ContentCache\Lotus.ContentCache.csproj", "{06EFBFCA-B08E-46E0-8ED3-0607C7293506}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lotus.ExtractCache", "Lotus.ExtractCache\Lotus.ExtractCache.csproj", "{C2D74DBB-F4DF-4B9C-8748-5CA3AF5438EB}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lotus.Types", "Lotus.Types\Lotus.Types.csproj", "{D06779A9-5D4A-4EB1-AD5F-23BE62B092EB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Programs", "Programs", "{3B371C8E-9936-4A68-B9F1-384D9DDEBFCF}"
 EndProject
@@ -25,18 +21,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{06EFBFCA-B08E-46E0-8ED3-0607C7293506}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{06EFBFCA-B08E-46E0-8ED3-0607C7293506}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{06EFBFCA-B08E-46E0-8ED3-0607C7293506}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{06EFBFCA-B08E-46E0-8ED3-0607C7293506}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C2D74DBB-F4DF-4B9C-8748-5CA3AF5438EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C2D74DBB-F4DF-4B9C-8748-5CA3AF5438EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C2D74DBB-F4DF-4B9C-8748-5CA3AF5438EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C2D74DBB-F4DF-4B9C-8748-5CA3AF5438EB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D06779A9-5D4A-4EB1-AD5F-23BE62B092EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D06779A9-5D4A-4EB1-AD5F-23BE62B092EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D06779A9-5D4A-4EB1-AD5F-23BE62B092EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D06779A9-5D4A-4EB1-AD5F-23BE62B092EB}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8A50DAB5-072A-4565-8330-4E4479814744}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8A50DAB5-072A-4565-8330-4E4479814744}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8A50DAB5-072A-4565-8330-4E4479814744}.Release|Any CPU.ActiveCfg = Release|Any CPU

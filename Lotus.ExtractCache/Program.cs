@@ -4,8 +4,6 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using DragonLib;
-using Lotus.ContentCache;
-using Lotus.Types;
 using Serilog;
 using Serilog.Events;
 
@@ -26,12 +24,12 @@ public static class Program {
                     .CreateLogger();
 
         foreach (var toc in Directory.EnumerateFiles(Path.Combine(args[0], "Cache.Windows"), "*.toc", SearchOption.TopDirectoryOnly)) {
-            CacheManager.Instance.LoadTable(toc);
+            ContentCache.Instance.LoadTable(toc);
         }
 
         TypeFactory.Instance.LoadPackages();
 
-        foreach (var instance in CacheManager.Instance) {
+        foreach (var instance in ContentCache.Instance) {
             try {
                 var (sourcePath, type, language, data, entry) = instance;
                 if (entry.IsDirectory) {
@@ -71,6 +69,6 @@ public static class Program {
             }
         }
 
-        CacheManager.Instance.Dispose();
+        ContentCache.Instance.Dispose();
     }
 }

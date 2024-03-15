@@ -4,11 +4,26 @@
         <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
         <LangVersion>preview</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Lotus.ContentCache\Lotus.ContentCache.csproj"/>
-        <ProjectReference Include="..\Lotus.Types\Lotus.Types.csproj"/>
+        <ProjectReference Include="..\DragonLib\DragonLib\DragonLib.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Serilog" Version="3.1.1"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Include="..\Native\win64\libzstd.dll">
+            <LinkBase>runtimes/win-x64/native/</LinkBase>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Content Include="..\Native\win32\libzstd.dll">
+            <LinkBase>runtimes/win-x32/native/</LinkBase>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 
 </Project>

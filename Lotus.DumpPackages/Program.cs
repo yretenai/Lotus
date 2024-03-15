@@ -3,8 +3,6 @@
 using System;
 using System.IO;
 using DragonLib;
-using Lotus.ContentCache;
-using Lotus.Types;
 using Serilog;
 using Serilog.Events;
 
@@ -25,7 +23,7 @@ public static class Program {
                     .CreateLogger();
 
         foreach (var toc in Directory.EnumerateFiles(Path.Combine(args[0], "Cache.Windows"), "*.toc", SearchOption.TopDirectoryOnly)) {
-            CacheManager.Instance.LoadTable(toc);
+            ContentCache.Instance.LoadTable(toc);
         }
 
         TypeFactory.Instance.LoadCache();
