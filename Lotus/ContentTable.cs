@@ -32,32 +32,38 @@ public sealed class ContentTable : IDisposable {
         }
 
         stream.ReadExactly(buffer.Memory.Span[..bufferSize]);
-        Entries = new TableEntry[bufferSize / 0x60];
+        var count = bufferSize / 0x60;
+        EntriesPooled = MemoryPool<TableEntry>.Shared.Rent(count);
+        var entriesSpan = EntriesPooled.Memory.Span;
         using var bufferPin = buffer.Memory.Pin();
-        for (var offset = 0; offset < bufferSize; offset += 0x60) {
-            Entries[offset / 0x60] = Marshal.PtrToStructure<TableEntry>((IntPtr) bufferPin.Pointer + offset);
+        for (var offset = 0; offset < count; ++offset) {
+            entriesSpan[offset] = Marshal.PtrToStructure<TableEntry>((IntPtr) bufferPin.Pointer + offset * 0x60);
         }
 
         var directoryMap = new Dictionary<int, int>();
-        Paths = new string[Entries.Length];
+        var paths = ArrayPool<string>.Shared.Rent(count);
         var directoryId = 0;
-        for (var index = 0; index < Entries.Length; index++) {
-            var entry = Entries[index];
+        Files.EnsureCapacity(count);
+        for (var index = 0; index < count; index++) {
+            var entry = entriesSpan[index];
             var parent = "";
+            if (entry.Parent > index) {
+                throw new InvalidOperationException();
+            }
+
             if (entry.Parent > 0) {
-                parent = Paths[directoryMap[entry.Parent - 1]];
+                parent = paths[directoryMap[entry.Parent - 1]];
             }
 
             if (entry.IsDirectory) {
                 directoryMap[directoryId++] = index;
             }
 
-            Paths[index] = parent + "/" + entry.Name;
+            var path = paths[index] = parent + "/" + entry.Name;
 
             if (!entry.IsDirectory) {
-                var path = Paths[index];
                 if (Files.TryGetValue(path, out var oldEntry)) {
-                    if (Entries[oldEntry].Time > entry.Time) {
+                    if (entriesSpan[oldEntry].Time > entry.Time) {
                         Log.Debug("[{Category}] Trying to overwrite cache entry?", "Lotus/Cache");
                         continue;
                     }
@@ -69,8 +75,8 @@ public sealed class ContentTable : IDisposable {
         }
     }
 
-    public TableEntry[] Entries { get; }
-    public string[] Paths { get; }
+    private IMemoryOwner<TableEntry> EntriesPooled { get; }
+    public Span<TableEntry> Entries => EntriesPooled.Memory.Span;
     public Dictionary<string, int> Files { get; } = new();
     public Stream Cache { get; }
     public ContentType Type { get; internal set; }
@@ -86,6 +92,7 @@ public sealed class ContentTable : IDisposable {
     }
 
     public void Dispose() {
+        EntriesPooled.Dispose();
         Cache.Dispose();
     }
 }

@@ -52,9 +52,8 @@ public record Packages : CacheFile {
 
         NextConfig nextConfig;
         using var defer = new Deferrable();
-        var comFlagsBuffer = new CursoredMemoryMarshal();
         if (Version >= 34) {
-            comFlagsBuffer = buffer.Part(buffer.Read<int>());
+            var comFlagsBuffer = buffer.Part(buffer.Read<int>());
             var comSizeBuffer = buffer.Part(buffer.Read<int>());
             var comZBuffer = buffer.Slice(buffer.Read<int>());
             var dictsize = comSizeBuffer.Read<int>();
@@ -73,14 +72,14 @@ public record Packages : CacheFile {
             defer.Disposables.Add(decompressor);
 
             nextConfig = () => {
-                if (comFlagsBuffer.ReadBits(1) == 1) { // hasText
+                if (comFlagsBuffer.ReadBit()) { // hasText
                     var size = (int) comSizeBuffer.ReadULEB(32);
                     var frameData = zbuffer.Slice(size);
-                    if (comFlagsBuffer.ReadBits(1) == 1) { // isCompressed
+                    if (comFlagsBuffer.ReadBit()) { // isCompressed
                         var frame = new CursoredMemoryMarshal(frameData);
                         var dsize = (int) frame.ReadULEB(32);
                         using var buf = MemoryPool<byte>.Shared.Rent(dsize);
-                        var bufMem = buf.Memory.Slice(0, dsize);
+                        var bufMem = buf.Memory[..dsize];
                         var n = decompressor.Decompress(frame.Slice(), bufMem);
                         if (n != dsize) {
                             throw new InvalidOperationException();
@@ -100,7 +99,6 @@ public record Packages : CacheFile {
             var stringIndex = 0;
             nextConfig = () => {
                 if (stringIndex < stringBuffer.Length) {
-                    comFlagsBuffer.ReadBits(1); // isCompressed
                     var textBuffer = stringBuffer[stringIndex++..].Span;
                     var textLength = textBuffer.IndexOf((byte) 0);
                     stringIndex += textLength;

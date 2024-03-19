@@ -27,11 +27,7 @@ public sealed class PooledMemoryMarshal : CursoredMemoryMarshal, IDisposable {
         }
     }
 
-    public override void EnsureSpace(int size) {
-        if (ReadOnly) {
-            return;
-        }
-
+    public void EnsureSpace(int size) {
         if (Buffer.Length >= size) {
             return;
         }
@@ -45,5 +41,17 @@ public sealed class PooledMemoryMarshal : CursoredMemoryMarshal, IDisposable {
         Owner.Dispose();
         Owner = tmp;
         SetBuffer(Owner.Memory[..size]);
+    }
+
+    public void Paste(Memory<byte> buffer) {
+        EnsureSpace(Cursor + buffer.Length);
+        buffer.CopyTo(Buffer[Cursor..]);
+        Cursor += buffer.Length;
+    }
+
+    public void Paste(Span<byte> buffer) {
+        EnsureSpace(Cursor + buffer.Length);
+        buffer.CopyTo(Buffer[Cursor..].Span);
+        Cursor += buffer.Length;
     }
 }

@@ -10,20 +10,18 @@ using DragonLib;
 namespace Lotus.IO;
 
 public class CursoredMemoryMarshal {
-    public CursoredMemoryMarshal() { }
+    protected CursoredMemoryMarshal() { }
 
-    public CursoredMemoryMarshal(Memory<byte> buffer, bool readOnly = false, int cursor = 0) {
+    public CursoredMemoryMarshal(Memory<byte> buffer, int cursor = 0) {
         SetBuffer(buffer);
-        ReadOnly = readOnly;
+        FlushBits();
         Cursor = cursor;
     }
 
     public int Bits { get; private set; } = -1;
     public Memory<byte> Buffer { get; private set; }
     public int Cursor { get; set; }
-    public int Shift { get; private set; } = int.MaxValue;
-
-    public bool ReadOnly { get; }
+    public int Shift { get; private set; }
 
     public int Left => Buffer.Length - Cursor;
 
@@ -45,70 +43,48 @@ public class CursoredMemoryMarshal {
         return value;
     }
 
-    public byte ReadBits(int bits) {
+    public void FlushBits() {
+        Shift = int.MaxValue;
+    }
+
+    public ulong ReadBits(int bits) {
+        if (bits > 64) {
+            throw new NotSupportedException();
+        }
+
+        var returnValue = 0UL;
+
+        while (bits > 0) {
+            if (Shift >= 8) {
+                Bits = Read<byte>();
+                Shift = 0;
+            }
+
+            var localBits = Math.Min(8 - Shift, bits);
+            var mask = (1 << localBits) - 1;
+            var value = (Bits >> Shift) & mask;
+            Shift += localBits;
+
+            returnValue |= (byte) value;
+            bits -= localBits;
+            if (bits > 0) {
+                returnValue <<= localBits;
+            }
+        }
+
+        return returnValue;
+    }
+
+    public bool ReadBit() {
         if (Shift >= 8) {
             Bits = Read<byte>();
             Shift = 0;
         }
 
-        var mask = (1 << bits) - 1;
-        var value = (Bits >> Shift) & mask;
-        Shift += bits;
-        return (byte) value;
-    }
+        var value = (Bits >> Shift) & 1;
+        Shift++;
 
-    public ReadOnlySpan<T> Cast<T>(int count, int alignment = 0) where T : struct {
-        var size = Unsafe.SizeOf<T>() * count;
-        var value = MemoryMarshal.Cast<byte, T>(Buffer[Cursor..(Cursor + size)].Span);
-        Cursor += size;
-        if (alignment > 0) {
-            Cursor = Cursor.Align(alignment);
-        }
-
-        return value;
-    }
-
-    public ReadOnlySpan<T> CastInter<T>(int count, int alignment = 0) where T : struct {
-        Span<T> array = new T[count];
-        for (var i = 0; i < count; ++i) {
-            array[i] = Read<T>(alignment);
-        }
-
-        return array;
-    }
-
-    public virtual void EnsureSpace(int size) {
-        if (ReadOnly) {
-            return;
-        }
-
-        if (Buffer.Length >= size) {
-            return;
-        }
-
-        var tmp = new Memory<byte>(new byte[size]);
-        Buffer.CopyTo(tmp);
-        Buffer = tmp;
-    }
-
-    public void Paste(Memory<byte> buffer) {
-        if (ReadOnly) {
-            return;
-        }
-
-        EnsureSpace(Cursor + buffer.Length);
-        buffer.CopyTo(Buffer[Cursor..]);
-        Cursor += buffer.Length;
-    }
-
-    public void Paste(Span<byte> buffer) {
-        if (ReadOnly) {
-            return;
-        }
-
-        EnsureSpace(Cursor + buffer.Length);
-        buffer.CopyTo(Buffer[Cursor..].Span);
-        Cursor += buffer.Length;
+        return value == 1;
     }
 
     public Memory<byte> Slice(int size) {
