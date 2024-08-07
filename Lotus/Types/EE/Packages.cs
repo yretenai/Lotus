@@ -37,8 +37,8 @@ public record Packages : CacheFile {
             Types.EnsureCapacity(count);
             for (var i = 0; i < count; ++i) {
                 var str = buffer.ReadString();
-                var unknown1 = buffer.Read<short>();
-                Types.Add(new PackageRef(str, unknown1));
+                var flags = buffer.Read<short>();
+                Types.Add(new PackageRef(str, flags));
             }
         }
 
@@ -46,8 +46,8 @@ public record Packages : CacheFile {
         PackageRegistry.EnsureCapacity(count);
         for (var i = 0; i < count; ++i) {
             var str = buffer.ReadString();
-            var unknown1 = buffer.Read<byte>();
-            PackageRegistry.Add(new PackageRef(str, unknown1));
+            var flags = buffer.Read<byte>();
+            PackageRegistry.Add(new PackageRef(str, flags));
         }
 
         NextConfig nextConfig;
@@ -115,22 +115,21 @@ public record Packages : CacheFile {
         for (var i = 0; i < count; ++i) {
             var packageName = buffer.ReadString();
             var fileName = buffer.ReadString();
-            var unknown1 = Version >= 36 ? buffer.Read<ushort>() : buffer.Read<int>();
-            var unknown2 = buffer.Read<byte>();
+            var flags = Version >= 36 ? buffer.Read<ushort>() : buffer.Read<int>();
+            flags |= buffer.Read<byte>() << 24;
             var parentType = buffer.ReadString();
-            var unknown3 = Version < 40 ? buffer.Read<int>() : 0; // cached as string index.
+            var flags2 = Version < 40 ? buffer.Read<int>() : 0; // cached as string index.
 
             var text = nextConfig();
 
             var package = new PackageEntry(packageName, fileName, parentType, text) {
-                Unknown1 = unknown1,
-                Unknown2 = unknown2,
-                Unknown3 = unknown3,
+                Flags = flags,
+                Flags2 = flags2,
             };
             EntityRegistry[packageName + fileName] = package;
 
             //   store in type lookup?  store globally?
-            if ((unknown1 & 1) == 0 && (unknown1 & 0x400) == 0x400) {
+            if ((flags & 1) == 0 && (flags & 0x400) == 0x400) {
                 EntityRegistry[fileName] = package;
             }
         }

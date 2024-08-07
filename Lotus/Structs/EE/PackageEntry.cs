@@ -3,10 +3,9 @@
 namespace Lotus.Structs.EE;
 
 public record PackageEntry(string PackageName, string FileName, string ParentType, string Content) {
-    public int Unknown1 { get; init; }
-    public int Unknown2 { get; init; }
-    public int Unknown3 { get; init; }
+    public int Flags { get; init; }
+    public int Flags2 { get; init; }
     public string FullName => PackageName + FileName;
 }
 
-public record PackageRef(string Package, int Unknown);
+public record PackageRef(string Package, int Flags);

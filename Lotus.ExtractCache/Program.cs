@@ -44,9 +44,13 @@ public static class Program {
                 }
 
                 if (!Path.HasExtension(sourcePath)) {
-                    Debug.Assert(!string.IsNullOrEmpty(entity?.FileName), "!string.IsNullOrEmpty(entity?.FileName)");
-                    Debug.Assert(entity.ParentType.Length == 0, "entity.ParentType.Length == 0");
-                    sourcePath += "." + entity.FileName.ToLowerInvariant();
+                    if (entity == null) {
+                        sourcePath += ".Object";
+                    } else {
+                        Debug.Assert(!string.IsNullOrEmpty(entity.FileName), "!string.IsNullOrEmpty(entity?.FileName)");
+                        Debug.Assert(entity.ParentType.Length == 0, "entity.ParentType.Length == 0");
+                        sourcePath += "." + entity.FileName;
+                    }
                 }
 
                 Log.Information("{Path}", sourcePath);
