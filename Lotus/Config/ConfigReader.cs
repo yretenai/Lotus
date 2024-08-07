@@ -3,17 +3,20 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace Lotus.Config;
 
 public static class ConfigReader {
-    public static ConfigSections ReadSections(string config, string rootSection = "Lotus", string rootType = "/EE/Types/Applet") {
+    public static ConfigSections ReadSections(string config, string rootSection = "Lotus", string rootType = "/EE/Types/Applet/") {
         var sections = new List<ConfigSection>();
         if (config.Trim().Length is 0) {
             return ConfigSections.Empty;
         }
 
-        var currentSection = new ConfigSection(rootSection, rootType);
+        var currentSection = new ConfigSection(rootSection) {
+            Type = rootType + rootSection,
+        };
         var lines = config.Split('\n');
         var lineIndex = 0;
         while (lineIndex < lines.Length) {
@@ -34,7 +37,9 @@ public static class ConfigReader {
                     sections.Add(currentSection);
                 }
 
-                currentSection = new ConfigSection(split[0], split[1]);
+                currentSection = new ConfigSection(split[0]) {
+                    Type = split[1] + split[0],
+                };
                 continue;
             }
 
@@ -56,15 +61,11 @@ public static class ConfigReader {
     private static object ParseValue(ref int lineIndex, string[] lines, string v) {
         switch (v[0]) {
             case '{' when v.Length > 1: {
-                if (v[1] is '}') {
-                    return Array.Empty<object>();
-                }
-
-                throw new NotSupportedException();
+                return v[1] is '}' ? [] : v[1..^1].Split(',');
             }
             case '{': {
                 var nextLine = lines[lineIndex].Trim();
-                if (nextLine is "{" || nextLine.EndsWith(',')) // array
+                if (nextLine is "{" || nextLine.EndsWith(',') || !nextLine.Contains('=', StringComparison.Ordinal)) // array
                 {
                     return ParseArray(ref lineIndex, lines);
                 }
@@ -122,10 +123,42 @@ public static class ConfigReader {
             ob[line[..eqPos]] = ParseValue(ref lineIndex, lines, line[(eqPos + 1)..]);
         }
 
-        return ob;
+        if (ob.Count == 0) {
+            return ob;
+        }
+
+        // polymorphics are `Tag:Key`, usually with an accomanying `Tag:Type`.
+        var newOb = new Dictionary<string, object>();
+        foreach (var (key, value) in ob) {
+            if (!key.Contains(':', StringComparison.Ordinal)) {
+                newOb[key] = value;
+            }
+
+            var tagParts = key.Split(':', 2);
+            if (!newOb.TryGetValue(tagParts[0], out var tagBox)) {
+                tagBox = newOb[tagParts[0]] = new ConfigSection(tagParts[0]);
+            }
+
+            if (tagBox is not ConfigSection tag) {
+                return ob;
+            }
+
+            if (tagParts[1] == "Type") {
+                if (value is not string str) {
+                    return ob;
+                }
+
+                tag.Type = str;
+                continue;
+            }
+
+            tag.Values[tagParts[1]] = value;
+        }
+
+        return newOb;
     }
 
-    private static List<object> ParseArray(ref int lineIndex, string[] lines) {
+    private static object ParseArray(ref int lineIndex, string[] lines) {
         var list = new List<object>();
         while (true) {
             var line = lines[lineIndex++].Trim();
@@ -141,6 +174,16 @@ public static class ConfigReader {
         }
 
         lineIndex++;
+
+        // Arrays are sometimes Dictionaries, e.g.
+        // Behaviors={
+        // fire:Type=/Types/WeaponFireBehavior
+        // fire:WeaponFireBehavior={}
+        // }
+        if (list is [Dictionary<string, object> dict] && dict.Values.All(x => x is ConfigSection)) {
+            return dict;
+        }
+
         return list;
     }
 }
