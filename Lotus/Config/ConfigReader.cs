@@ -2,6 +2,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -34,6 +36,7 @@ public static class ConfigReader {
                 //sections
                 var split = line[1..^1].Split(',', 2, StringSplitOptions.TrimEntries);
                 if (currentSection.Values.Count > 0) {
+                    currentSection.Values = ExpandTypes(currentSection.Values);
                     sections.Add(currentSection);
                 }
 
@@ -52,6 +55,7 @@ public static class ConfigReader {
         }
 
         if (currentSection.Values.Count > 0) {
+            currentSection.Values = ExpandTypes(currentSection.Values);
             sections.Add(currentSection);
         }
 
@@ -61,7 +65,24 @@ public static class ConfigReader {
     private static object ParseValue(ref int lineIndex, string[] lines, string v) {
         switch (v[0]) {
             case '{' when v.Length > 1: {
-                return v[1] is '}' ? [] : v[1..^1].Split(',');
+                if (v[1] is '}') {
+                    return (List<object>) [];
+                }
+
+                var values = v[1..^1].Split(',').Cast<object>().ToList();
+
+                for (var index = 0; index < values.Count; index++) {
+                    var value = (string) values[index];
+                    if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v64)) {
+                        values[index] = v64;
+                    }
+
+                    if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var f64)) {
+                        values[index] = f64;
+                    }
+                }
+
+                return values;
             }
             case '{': {
                 var nextLine = lines[lineIndex].Trim();
@@ -74,8 +95,17 @@ public static class ConfigReader {
             }
             case '\"':
                 return ReadString(ref lineIndex, lines, v[1..]);
-            default:
+            default: {
+                if (long.TryParse(v, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v64)) {
+                    return v64;
+                }
+
+                if (double.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out var f64)) {
+                    return f64;
+                }
+
                 return v;
+            }
         }
     }
 
@@ -127,24 +157,42 @@ public static class ConfigReader {
             return ob;
         }
 
-        // polymorphics are `Tag:Key`, usually with an accomanying `Tag:Type`.
+        return ExpandTypes(ob);
+    }
+
+    // polymorphics are `Tag:Key`, usually with an accomanying `Tag:Type`.
+    private static Dictionary<string, object> ExpandTypes(Dictionary<string, object> ob) {
         var newOb = new Dictionary<string, object>();
+        var tags = new HashSet<ConfigSection>();
         foreach (var (key, value) in ob) {
             if (!key.Contains(':', StringComparison.Ordinal)) {
                 newOb[key] = value;
+                continue;
             }
 
             var tagParts = key.Split(':', 2);
             if (!newOb.TryGetValue(tagParts[0], out var tagBox)) {
-                tagBox = newOb[tagParts[0]] = new ConfigSection(tagParts[0]);
+                var tmp = new ConfigSection(tagParts[0]) {
+                    Type = tagParts[0],
+                };
+                tags.Add(tmp);
+                tagBox = newOb[tagParts[0]] = tmp;
             }
 
             if (tagBox is not ConfigSection tag) {
+                if (Debugger.IsAttached) {
+                    Debugger.Break();
+                }
+
                 return ob;
             }
 
             if (tagParts[1] == "Type") {
                 if (value is not string str) {
+                    if (Debugger.IsAttached) {
+                        Debugger.Break();
+                    }
+
                     return ob;
                 }
 
@@ -153,6 +201,15 @@ public static class ConfigReader {
             }
 
             tag.Values[tagParts[1]] = value;
+        }
+
+        foreach (var tag in tags) {
+            if (tag is { Type: not null, Values.Count: 1 }) {
+                var typeName = tag.Type[(tag.Type.LastIndexOf('/') + 1)..];
+                if (tag.Values.TryGetValue(typeName, out var values) && values is Dictionary<string, object> valueDict) {
+                    tag.Values = valueDict;
+                }
+            }
         }
 
         return newOb;
